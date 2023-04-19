@@ -7,7 +7,7 @@ terraform {
     }
     scaleway = {
       source  = "scaleway/scaleway"
-      version = "~> 2.4.0"
+      version = "~> 2.16"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
