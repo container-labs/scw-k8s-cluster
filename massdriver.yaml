@@ -1,0 +1,155 @@
+# This file will be used to generate all of the schema-*.json files in a bundle
+schema: draft-07
+name: "scw-k8s-cluster"
+description: "Scaleway k8s Cluster"
+source_url: github.com/massdriver-cloud/scw-k8s-cluster
+access: "public"
+type: "infrastructure"
+
+steps:
+  - path: src
+    provisioner: terraform
+  - path: core-services
+    provisioner: terraform
+  - path: custom-resources
+    provisioner: terraform
+
+
+# schema-params.json
+# JSON Schema sans-fields above
+params:
+  examples:
+    - __name: Development
+  required:
+    - kubernetes_version
+    - node_groups
+    - core_services
+  properties:
+    kubernetes_version:
+      type: string
+      title: Kubernetes Version
+      default: 1.24.7
+    node_groups:
+      type: array
+      title: Node Groups
+      descrition: Node groups to provision
+      minItems: 1
+      items:
+        type: object
+        title: Node Group
+        required:
+          - name
+          - machine_type
+          - min_size
+          - max_size
+        properties:
+          name:
+            type: string
+            title: Name
+            description: The name of the node group
+            # https://cloud.google.com/compute/docs/naming-resources#resource-name-format
+            pattern: "[a-z]([-a-z0-9]*[a-z0-9])?"
+            minLength: 1
+            maxLength: 40
+            default: ""
+          min_size:
+            type: number
+            title: Minimum Size
+            description: Minimum number of instances in the node group
+            default: 1
+          max_size:
+            type: number
+            title: Maximum Size
+            description: Maximum number of instances in the node group
+            default: 10
+          machine_type:
+            type: string
+            title: Node Type
+            default: DEV1-M
+            oneOf:
+              - title: 'Dev: 3 vCPUs 4GB Memory'
+                const: DEV1-M
+              - title: 'General: 4 vCPUs 16GB Memory'
+                const: GP1-XS
+              - title: 'General: 8 vCPUs 32GB Memory'
+                const: GP1-S
+              - title: 'General: 16 vCPUs 64GB Memory'
+                const: GP1-M
+              - title: 'General: 32 vCPUs 128GB Memory'
+                const: GP1-L
+              - title: 'General: 48 vCPUs 256GB Memory'
+                const: GP1-XL
+
+    core_services:
+      type: object
+      title: Core Services
+      description: Configure core services in Kubernetes for Massdriver to manage
+      required: []
+      properties:
+        enable_ingress:
+          type: boolean
+          title: Enable Ingress
+          description: Enabling this will create an nginx ingress controller in the cluster, allowing internet traffic to flow into web accessible services within the cluster
+          default: false
+        dns_zones:
+          type: array
+          title: DNS Zones
+          description: Select any DNS Zones associated with this cluster to allow the cluster to automatically manage DNS records and SSL certificates
+          default: []
+          items:
+            type: string
+            title: Zone
+    region:
+      title: Region
+      type: string
+      $md.immutable: true
+      default: fr-par
+      oneOf:
+        - const: fr-par
+          title: France - Paris
+        - const: nl-ams
+          title: The Netherlands - Amsterdam
+        - const: pl-waw
+          title: Poland - Warsaw
+
+connections:
+  required:
+    - scw_authentication
+    - network
+  properties:
+    # TODO: add artifact for scw-api-key
+    # scw_authentication:
+    #   $ref: massdriver/scw-api-key
+    scw_authentication:
+      $ref: massdriver/gcp-service-account
+    # TODO: add artifact for scw-vpc
+    # network:
+    #   $ref: massdriver/scw-vpc
+    network:
+      $ref: massdriver/gcp-global-network
+
+
+# schema-artifacts.json
+# Named list of output artifacts  (map[name]artifact)
+artifacts:
+  required:
+    - kubernetes_cluster
+  properties:
+    kubernetes_cluster:
+      $ref: massdriver/kubernetes-cluster
+
+# schema-ui.json
+# List of form customizations for params-schema
+ui:
+  ui:order:
+    - kubernetes_version
+    - node_groups
+    - core_services
+    - "*"
+  node_groups:
+    ui:order:
+      - name
+      - machine_type
+      - min_size
+      - max_size
+      - "*"
